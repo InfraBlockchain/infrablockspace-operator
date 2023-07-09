@@ -1,0 +1,12 @@
+apiVersion: infrablockspace.net/v1alpha1
+kind: InfraBlockSpace
+metadata:
+  labels:
+    app.kubernetes.io/name: infrablockspace
+    app.kubernetes.io/instance: infrablockspace-sample
+    app.kubernetes.io/part-of: infrablockspace-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: infrablockspace-operator
+  name: infrablockspace-sample
+spec:
+  # TODO(user): Add fields here

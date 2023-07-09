@@ -1,0 +1,31 @@
+# permissions for end users to edit infrablockspaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: infrablockspace-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: infrablockspace-operator
+    app.kubernetes.io/part-of: infrablockspace-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: infrablockspace-editor-role
+rules:
+- apiGroups:
+  - infrablockspace.net
+  resources:
+  - infrablockspaces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrablockspace.net
+  resources:
+  - infrablockspaces/status
+  verbs:
+  - get

@@ -1,0 +1,27 @@
+# permissions for end users to view infrablockspaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: infrablockspace-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: infrablockspace-operator
+    app.kubernetes.io/part-of: infrablockspace-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: infrablockspace-viewer-role
+rules:
+- apiGroups:
+  - infrablockspace.net
+  resources:
+  - infrablockspaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrablockspace.net
+  resources:
+  - infrablockspaces/status
+  verbs:
+  - get
