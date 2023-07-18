@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,23 +28,54 @@ import (
 type InfraBlockSpaceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
+	// app
+	Region string `json:"region,omitempty"`
 	// Foo is an example field of InfraBlockSpace. Edit infrablockspace_types.go to remove/update
 	Image string `json:"image,binding:required"`
+
 	// port
+	Port Port `json:"port,omitempty"`
+
 	// replicas
-	// bootnodes
+	Replicas int32 `json:"replicas,omitempty"`
+
 	// chainSpec
+	ChainSpec string `json:"chainSpec,omitempty"`
+
 	// keys
-	// ingress
-	// peer ingress
-	// pvc
+	Keys *[]Key `json:"keys,omitempty"`
+
+	// Periodic probe of container liveness.
+	// Container will be restarted if the probe fails.
+	// +optional
+	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
+	// Periodic probe of container service readiness.
+	// Container will be removed from service endpoints if the probe fails.
+	// +optional
+	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
+	// Actions that the management system should take in response to container lifecycle events.
+	// +optional
+	Lifecycle *corev1.Lifecycle            `json:"lifecycle,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+type Port struct {
+	RPCPort int32 `json:"rpcPort,omitempty"`
+	WSPort  int32 `json:"wsPort,omitempty"`
+	P2PPort int32 `json:"p2pPort,omitempty"`
+}
+
+type Key struct {
+	KeyType string `json:"type,omitempty"`
+	Scheme  string `json:"scheme,omitempty"`
+	Seed    string `json:"seed,omitempty"`
 }
 
 // InfraBlockSpaceStatus defines the observed state of InfraBlockSpace
 type InfraBlockSpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	SecretStatus string
 }
 
 //+kubebuilder:object:root=true
