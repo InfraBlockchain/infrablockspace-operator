@@ -17,14 +17,15 @@ limitations under the License.
 package controllers
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"log"
-	"strings"
 
 	infrablockspacenetv1alpha1 "github.com/InfraBlockchain/infrablockspace-operator/api/v1alpha1"
-	"github.com/InfraBlockchain/infrablockspace-operator/pkg/status"
+	"github.com/InfraBlockchain/infrablockspace-operator/pkg/chain"
+	"github.com/InfraBlockchain/infrablockspace-operator/pkg/render"
+	"github.com/InfraBlockchain/infrablockspace-operator/pkg/util"
 	"github.com/tae2089/bob-logging/logger"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -65,6 +66,7 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	reqInfraBlockspace := &infrablockspacenetv1alpha1.InfraBlockSpace{}
 	err := r.Get(ctx, req.NamespacedName, reqInfraBlockspace)
 	if err != nil {
+		logger.Error(err, zapcore.Field{})
 		if kerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -72,27 +74,18 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	if reqInfraBlockspace.Status.SecretStatus != status.Success {
-		err = r.checkSecretExists(ctx, reqInfraBlockspace)
-		if err != nil {
-			return r.updateStatusAndReturnError(ctx, reqInfraBlockspace, status.Failed, err)
-		}
-		return r.updateStatusAndReturnResult(ctx, reqInfraBlockspace, status.Success)
+	err = r.checkSecretExists(ctx, reqInfraBlockspace)
+	if err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *InfraBlockSpaceReconciler) updateStatusAndReturnError(ctx context.Context, reqInfraBlockspace *infrablockspacenetv1alpha1.InfraBlockSpace, status string, err error) (ctrl.Result, error) {
-	reqInfraBlockspace.Status.SecretStatus = status
-	if updateErr := r.Status().Update(ctx, reqInfraBlockspace); updateErr != nil {
-		return ctrl.Result{}, errors.Join(err, updateErr)
-	}
-	return ctrl.Result{}, err
-}
-func (r *InfraBlockSpaceReconciler) updateStatusAndReturnResult(ctx context.Context, reqInfraBlockspace *infrablockspacenetv1alpha1.InfraBlockSpace, status string) (ctrl.Result, error) {
-	reqInfraBlockspace.Status.SecretStatus = status
-	if err := r.Status().Update(ctx, reqInfraBlockspace); err != nil {
-		return ctrl.Result{}, err
+func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, namespace, name string, key chain.Key) error {
+
+	if err := r.validateKey(key); err != nil {
+		return err
 	}
 
 	return ctrl.Result{Requeue: true}, nil
@@ -112,31 +105,46 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, namespace,
 			"scheme": key.Scheme,
 		},
 	}
+
 	if err := r.Create(ctx, secret); err != nil {
-		log.Println(err, "Faild to create Secret")
 		return err
 	}
+
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace, name string, key infrablockspacenetv1alpha1.Key) error {
-	if key.KeyType == "" || key.Scheme == "" || key.Seed == "" {
-		return errors.New("key type, scheme and seed are required")
+func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace, name string, key chain.Key) error {
+	if err := r.validateKey(key); err != nil {
+		return err
 	}
+
 	foundSecret := &corev1.Secret{}
 	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundSecret); err != nil {
 		return err
 	}
-	if !(bytes.Equal(foundSecret.Data["type"], []byte(key.KeyType)) &&
-		bytes.Equal(foundSecret.Data["seed"], []byte(key.Seed)) &&
-		bytes.Equal(foundSecret.Data["scheme"], []byte(key.Scheme))) {
-		foundSecret.Data["type"] = []byte(key.KeyType)
-		foundSecret.Data["seed"] = []byte(key.Seed)
-		foundSecret.Data["scheme"] = []byte(key.Scheme)
+	existingKeyType, _ := base64.StdEncoding.DecodeString(string(foundSecret.Data["type"]))
+	existingKeySeed, _ := base64.StdEncoding.DecodeString(string(foundSecret.Data["seed"]))
+	existingKeyScheme, _ := base64.StdEncoding.DecodeString(string(foundSecret.Data["scheme"]))
+
+	if !(string(existingKeyType) == key.KeyType &&
+		string(existingKeySeed) == key.Seed &&
+		string(existingKeyScheme) == key.Scheme) {
+		foundSecret.StringData["type"] = key.KeyType
+		foundSecret.StringData["seed"] = key.Seed
+		foundSecret.StringData["scheme"] = key.Scheme
 		if err := r.Update(ctx, foundSecret); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (r *InfraBlockSpaceReconciler) validateKey(key chain.Key) error {
+	if key.KeyType == "" || key.Scheme == "" || key.Seed == "" {
+		return errors.New("key type, scheme and seed are required")
+	}
+	return nil
+}
 
 	return nil
 }
@@ -207,44 +215,36 @@ func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace,
 // 	return nil
 // }
 
-func generateResoucreName(names ...string) string {
-	newNameList := make([]string, 0)
-	for _, name := range names {
-		if name != "" {
-			newNameList = append(newNameList, name)
-		}
-	}
-	return strings.Join(newNameList, "-")
-}
-
 func (r *InfraBlockSpaceReconciler) checkSecretExists(ctx context.Context, reqInfraBlockspace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 
 	for _, key := range *reqInfraBlockspace.Spec.Keys {
 		secret := &corev1.Secret{}
-		name := generateResoucreName(reqInfraBlockspace.Name, reqInfraBlockspace.Spec.Region, key.KeyType)
+		name := util.GenerateResoucreName(reqInfraBlockspace.Name, reqInfraBlockspace.Spec.Region, key.KeyType)
 		isExists, err := r.checkResourceExists(ctx, reqInfraBlockspace.Namespace, name, secret)
 		if isExists == false {
 			if err != nil {
-				logger.Error(err)
 				return err
 			} else {
-				logger.Info("start to Create Secret")
 				if err := r.createSecret(ctx, reqInfraBlockspace.Namespace, name, key); err != nil {
-					logger.Error(err)
 					return err
 				}
-				logger.Info("finish to Create Secret")
+				logger.Info("created secrets", zapcore.Field{
+					Key:    "key",
+					Type:   zapcore.StringType,
+					String: key.KeyType,
+				})
 			}
 		} else {
-			logger.Info("start to update secret")
 			if err = r.updateSecret(ctx, reqInfraBlockspace.Namespace, name, key); err != nil {
-				logger.Error(err)
 				return err
 			}
-			logger.Info("finish to update secret")
+			logger.Info("updated secrets", zapcore.Field{
+				Key:    "key",
+				Type:   zapcore.StringType,
+				String: key.KeyType,
+			})
 		}
 	}
-
 	return nil
 }
 func (r *InfraBlockSpaceReconciler) checkResourceExists(ctx context.Context, namespace string, name string, obj client.Object) (bool, error) {
