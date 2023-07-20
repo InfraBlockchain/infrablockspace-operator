@@ -15,7 +15,7 @@ func TestRenderInjectKeyTemplate(t *testing.T) {
 		{KeyType: "test", Scheme: "test", Seed: "test"},
 	}
 	t.Run("create key", func(t *testing.T) {
-		got := RenderingInjectKeyTemplate(keys)
+		got := RenderingInTemplate(keys)
 		fmt.Print(got)
 	})
 }
