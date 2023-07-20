@@ -34,8 +34,7 @@ type InfraBlockSpaceSpec struct {
 	Region string `json:"region,omitempty"`
 
 	// Image is the docker image for the InfraBlockSpace
-	Image string `json:"image,omitempty"
-`
+	Image string `json:"image,omitempty"`
 	// Rack is the name of the server rack example: a,b,c,d,e
 	Rack string `json:"rack,omitempty"`
 
