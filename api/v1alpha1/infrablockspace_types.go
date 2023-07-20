@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/InfraBlockchain/infrablockspace-operator/pkg/chain"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,22 +29,28 @@ import (
 type InfraBlockSpaceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	// app
+	// Region is the global region
+	// recommended using country codes example: KR, US, JP, CN
 	Region string `json:"region,omitempty"`
-	// Foo is an example field of InfraBlockSpace. Edit infrablockspace_types.go to remove/update
-	Image string `json:"image,binding:required"`
 
-	// port
-	Port Port `json:"port,omitempty"`
+	// Image is the docker image for the InfraBlockSpace
+	Image string `json:"image,omitempty"
+`
+	// Rack is the name of the server rack example: a,b,c,d,e
+	Rack string `json:"rack,omitempty"`
 
-	// replicas
+	// Port is the port of the Chain Port
+	Port chain.Port `json:"port,omitempty"`
+
+	// Replicas is the number of replicas of the InfraBlockSpace
 	Replicas int32 `json:"replicas,omitempty"`
 
-	// chainSpec
+	// ChainSpec is the chain spec of the InfraBlockSpace
+	// please insert the url including https or http
 	ChainSpec string `json:"chainSpec,omitempty"`
 
-	// keys
-	Keys *[]Key `json:"keys,omitempty"`
+	// keys is the keys of the InfraBlockSpace
+	Keys *[]chain.Key `json:"keys,omitempty"`
 
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.
@@ -57,25 +64,22 @@ type InfraBlockSpaceSpec struct {
 	// +optional
 	Lifecycle *corev1.Lifecycle            `json:"lifecycle,omitempty"`
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-}
 
-type Port struct {
-	RPCPort int32 `json:"rpcPort,omitempty"`
-	WSPort  int32 `json:"wsPort,omitempty"`
-	P2PPort int32 `json:"p2pPort,omitempty"`
-}
+	// StorageClassName is the name of the storage class to which this volume belongs.
+	StorageClassName string `json:"storageClassName,omitempty"`
 
-type Key struct {
-	KeyType string `json:"type,omitempty"`
-	Scheme  string `json:"scheme,omitempty"`
-	Seed    string `json:"seed,omitempty"`
+	// Size is the size of the volume in GB
+	Size string `json:"size,omitempty"`
+
+	// BootNodes is the dns list of boot nodes of the InfraBlockSpace
+	BootNodes *[]string `json:"bootNodes,omitempty"`
 }
 
 // InfraBlockSpaceStatus defines the observed state of InfraBlockSpace
 type InfraBlockSpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	SecretStatus string
+	ChainSpec string `json:"chainSpec,omitempty"`
 }
 
 //+kubebuilder:object:root=true
