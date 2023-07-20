@@ -2,7 +2,7 @@ package chain
 
 import (
 	"fmt"
-	"github.com/InfraBlockchain/infrablockspace-operator/pkg/render"
+	"github.com/InfraBlockchain/infrablockspace-operator/internal/render"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"

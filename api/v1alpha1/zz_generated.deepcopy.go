@@ -22,7 +22,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/InfraBlockchain/infrablockspace-operator/pkg/chain"
+	"github.com/InfraBlockchain/infrablockspace-operator/internal/chain"
 	"k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
