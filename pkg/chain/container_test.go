@@ -1,28 +1,28 @@
-package render
+package chain
 
 import (
 	"fmt"
+	"github.com/InfraBlockchain/infrablockspace-operator/pkg/render"
 	"testing"
 
-	"github.com/InfraBlockchain/infrablockspace-operator/pkg/chain"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestRenderInjectKeyTemplate(t *testing.T) {
 
-	keys := []chain.Key{
+	keys := []Key{
 		{KeyType: "gran", Scheme: "test2", Seed: "test2"},
 		{KeyType: "test", Scheme: "test", Seed: "test"},
 	}
 	t.Run("create key", func(t *testing.T) {
-		got := RenderingInTemplate(keys)
+		got := render.RenderingInTemplate(InjectKeyScript, keys)
 		fmt.Print(got)
 	})
 }
 
 func TestRenderInjectKeyRange(t *testing.T) {
 
-	keys := []*chain.Key{
+	keys := []*Key{
 		{KeyType: "gran", Scheme: "test2", Seed: "test2"},
 		{KeyType: "test", Scheme: "test", Seed: "test"},
 	}
