@@ -89,6 +89,12 @@ help: ## Display this help.
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
+.PHONY: generate-manifests
+generate-manifests: manifests kustomize ## Generate manifests e.g. CRD, RBAC etc.
+	mkdir -p manifests
+	$(KUSTOMIZE) build config/default > manifests/infrablockspace-operator.yaml
+	$(KUSTOMIZE) build config/crd > manifests/crd.yaml
+
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
