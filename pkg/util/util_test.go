@@ -1,23 +1,14 @@
 package util
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestDecodingBase64(t *testing.T) {
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := DecodingBase64(tt.args.data); got != tt.want {
-				t.Errorf("DecodingBase64() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	sentence := "aGVsbG8="
+	t.Run("success base63 decoding", func(t *testing.T) {
+		result := DecodingBase64([]byte(sentence))
+		assert.Equal(t, "hello", result)
+	})
 }
