@@ -219,6 +219,9 @@ func (r *InfraBlockSpaceReconciler) validateKey(key chain.Key) error {
 }
 
 func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name, namespace, size, scName string) (ctrl.Result, error) {
+	if size == "" {
+		size = "100Gi"
+	}
 	pvc := chain.CreateChainPVC(name, namespace, size, scName)
 	if err := r.Create(ctx, pvc); err != nil {
 		logger.Error(err)
@@ -232,6 +235,9 @@ func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name, na
 	return ctrl.Result{Requeue: true}, nil
 }
 func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name, namespace, size string) (ctrl.Result, error) {
+	if size == "" {
+		return ctrl.Result{}, errors.New("size is required")
+	}
 	foundPVC := &corev1.PersistentVolumeClaim{}
 	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundPVC); err != nil {
 		logger.Error(err)
