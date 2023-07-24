@@ -17,9 +17,6 @@ func GenerateResourceName(names ...string) string {
 }
 
 func DecodingBase64(data []byte) string {
-	if data == nil || len(data) == 0 {
-		return ""
-	}
 	output, err := base64.StdEncoding.DecodeString(string(data))
 	if err != nil {
 		logger.Error(err)
