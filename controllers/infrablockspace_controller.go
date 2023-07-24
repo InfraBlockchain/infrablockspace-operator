@@ -191,6 +191,7 @@ func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace,
 	if !(existingKeyType == key.KeyType &&
 		existingKeySeed == key.Seed &&
 		existingKeyScheme == key.Scheme) {
+		foundSecret.StringData = make(map[string]string)
 		foundSecret.StringData["type"] = key.KeyType
 		foundSecret.StringData["seed"] = key.Seed
 		foundSecret.StringData["scheme"] = key.Scheme
@@ -198,13 +199,13 @@ func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace,
 			logger.Error(err)
 			return err
 		}
+		logger.Info("updated secrets", zapcore.Field{
+			Key:    "key",
+			Type:   zapcore.StringType,
+			String: key.KeyType,
+		})
 	}
 
-	logger.Info("updated secrets", zapcore.Field{
-		Key:    "key",
-		Type:   zapcore.StringType,
-		String: key.KeyType,
-	})
 	return nil
 }
 
