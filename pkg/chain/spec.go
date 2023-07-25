@@ -57,3 +57,16 @@ const InjectKeyScript string = `
            || echo "Failed to insert key into Keystore."
 		{{end}}
 `
+
+const DefaultChainWSPort int32 = 9933
+const DefaultChainRPCPort int32 = 9944
+const DefaultChainP2PPort int32 = 30333
+
+const VolumeSize100Gi = "100Gi"
+const DefaultSecondaryChainWSPort int32 = 9934
+const DefaultSecondaryChainRPCPort int32 = 9945
+const DefaultSecondaryChainP2PPort int32 = 30334
+
+const SuffixService = "service"
+const SuffixPvc = "pvc"
+const SuffixHeadlessService = "headless-service"
