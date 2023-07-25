@@ -73,18 +73,18 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	err = r.checkSecretExists(ctx, reqInfraBlockSpace)
+	err = r.ensureChainSecrets(ctx, reqInfraBlockSpace)
 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	result, err := r.checkChainPVC(ctx, reqInfraBlockSpace)
+	result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
 	if err != nil || result.Requeue {
 		return result, err
 	}
 
-	result, err = r.checkStatefulSet(ctx, reqInfraBlockSpace)
+	result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
 	if err != nil || result.Requeue {
 		return result, err
 	}
@@ -92,7 +92,7 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-func (r *InfraBlockSpaceReconciler) checkSecretExists(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 
 	for _, key := range *reqInfraBlockSpace.Spec.Keys {
 		secret := &corev1.Secret{}
@@ -114,8 +114,8 @@ func (r *InfraBlockSpaceReconciler) checkSecretExists(ctx context.Context, reqIn
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) checkChainPVC(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
-	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, "pvc")
+func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.SuffixPvc)
 	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.PersistentVolumeClaim{})
 	if !(isExists) {
 		if err != nil {
@@ -220,7 +220,7 @@ func (r *InfraBlockSpaceReconciler) validateKey(key chain.Key) error {
 
 func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name, namespace, size, scName string) (ctrl.Result, error) {
 	if size == "" {
-		size = "100Gi"
+		size = chain.VolumeSize100Gi
 	}
 	pvc := chain.CreateChainPVC(name, namespace, size, scName)
 	if err := r.Create(ctx, pvc); err != nil {
@@ -257,7 +257,7 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name, na
 	})
 	return ctrl.Result{}, nil
 }
-func (r *InfraBlockSpaceReconciler) checkStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
 	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.PersistentVolumeClaim{})
 	if err != nil {
@@ -361,6 +361,66 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 	return ctrl.Result{}, nil
 }
 
+func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
+	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.Service{})
+	if err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
+	}
+	if !(isExists) {
+		if err := r.createServices(ctx, name, reqInfraBlockSpace); err != nil {
+			logger.Error(err)
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	if err := r.createService(ctx, name, reqInfraBlockSpace, false); err != nil {
+		return err
+	}
+	if err := r.createService(ctx, name, reqInfraBlockSpace, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, isHeadless bool) error {
+	name = util.GenerateResourceName(name, getSuffix(isHeadless))
+	var ports []int32
+	if reqInfraBlockSpace.Spec.Port.WSPort == 0 {
+		ports = chain.GetDefaultRelayPorts()
+	} else {
+		ports = chain.GetCustomRelayPorts(reqInfraBlockSpace.Spec.Port)
+	}
+	servicePorts := chain.GenerateServicePorts(ports...)
+	var service *corev1.Service
+	if isHeadless {
+		service = chain.GenerateHeadlessServiceObject(name, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	} else {
+		service = chain.GenerateClusterIpServiceObject(name, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	}
+	if err := r.Create(ctx, service); err != nil {
+		return err
+	}
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, service, r.Scheme)
+	logger.Info("created service", zapcore.Field{
+		Key:    "Name",
+		Type:   zapcore.StringType,
+		String: name,
+	})
+	return nil
+}
+
+func getSuffix(isHeadless bool) string {
+	if isHeadless {
+		return chain.SuffixHeadlessService
+	}
+	return chain.SuffixService
+}
+
 func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Container {
 	isBootNode := reqInfraBlockSpace.Spec.BootNodes == nil
 	args := chain.GetRelayChainArgs(reqInfraBlockSpace.Spec.Port, isBootNode, reqInfraBlockSpace.Spec.BootNodes)
@@ -402,7 +462,7 @@ func (r *InfraBlockSpaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&infrablockspacenetv1alpha1.InfraBlockSpace{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
-		//Owns(&corev1.Service{}).
+		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Complete(r)
 }
