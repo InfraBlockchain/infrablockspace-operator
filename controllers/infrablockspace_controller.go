@@ -32,8 +32,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sort"
 )
 
 // InfraBlockSpaceReconciler reconciles a InfraBlockSpace object
@@ -380,6 +382,12 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 			return ctrl.Result{}, err
 		}
 	}
+
+	if err = r.updateServices(ctx, name, reqInfraBlockSpace); err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -419,6 +427,34 @@ func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, service *
 		Type:   zapcore.StringType,
 		String: service.Name,
 	})
+	return nil
+}
+
+func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+
+	ports := chain.GetServicePorts(reqInfraBlockSpace)
+	servicePorts := chain.GenerateServicePorts(ports...)
+	foundService := &corev1.Service{}
+	serviceNames := []string{name + "-" + chain.SuffixHeadlessService, name + "-" + chain.SuffixService}
+
+	for _, serviceName := range serviceNames {
+		if err := r.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: reqInfraBlockSpace.Namespace}, foundService); err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		sort.Sort(chain.ServicePortSort(servicePorts))
+		sort.Sort(chain.ServicePortSort(foundService.Spec.Ports))
+
+		if !(reflect.DeepEqual(foundService.Spec.Ports, servicePorts)) {
+			foundService.Spec.Ports = servicePorts
+			if err := r.Update(ctx, foundService); err != nil {
+				logger.Error(err)
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
