@@ -109,7 +109,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqI
 			return err
 		}
 		if !(isExists) {
-			if err := r.createSecret(ctx, reqInfraBlockSpace.Namespace, name, key); err != nil {
+			if err := r.createSecret(ctx, reqInfraBlockSpace, name, key); err != nil {
 				return err
 			}
 		} else {
@@ -130,7 +130,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 			return ctrl.Result{}, err
 		}
 		// create
-		return r.createChainPVC(ctx, name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
+		return r.createChainPVC(ctx, name, reqInfraBlockSpace)
 	} else {
 		// update
 		return r.updateChainPVC(ctx, name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size)
@@ -150,7 +150,7 @@ func (r *InfraBlockSpaceReconciler) checkResourceExists(ctx context.Context, nam
 	}
 }
 
-func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, namespace, name string, key chain.Key) error {
+func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, name string, key chain.Key) error {
 
 	if err := r.validateKey(key); err != nil {
 		return err
@@ -159,7 +159,7 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, namespace,
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: reqInfraBlockSpace.Namespace,
 		},
 		StringData: map[string]string{
 			"type":   key.KeyType,
@@ -167,7 +167,7 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, namespace,
 			"scheme": key.Scheme,
 		},
 	}
-
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, secret, r.Scheme)
 	if err := r.Create(ctx, secret); err != nil {
 		logger.Error(err)
 		return err
@@ -225,15 +225,16 @@ func (r *InfraBlockSpaceReconciler) validateKey(key chain.Key) error {
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name, namespace, size, scName string) (ctrl.Result, error) {
-	if size == "" {
-		size = chain.VolumeSize100Gi
+func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+	if reqInfraBlockSpace.Spec.Size == "" {
+		reqInfraBlockSpace.Spec.Size = chain.VolumeSize100Gi
 	}
-	pvc := chain.CreateChainPVC(name, namespace, size, scName)
+	pvc := chain.CreateChainPVC(name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
 	if err := r.Create(ctx, pvc); err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, pvc, r.Scheme)
 	logger.Info("created pvc", zapcore.Field{
 		Key:    "Name",
 		Type:   zapcore.StringType,
@@ -321,6 +322,7 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, statefulSet, r.Scheme)
 	return ctrl.Result{Requeue: true}, nil
 }
 
