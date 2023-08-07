@@ -380,7 +380,6 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 			return ctrl.Result{}, err
 		}
 	}
-	err = r.updateServices(ctx, name, reqInfraBlockSpace)
 	return ctrl.Result{}, nil
 }
 
