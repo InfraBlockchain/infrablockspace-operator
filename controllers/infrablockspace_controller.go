@@ -84,6 +84,11 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
+	_, err = r.ensureService(ctx, reqInfraBlockSpace)
+	if err != nil {
+		return result, err
+	}
+
 	result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
 	if err != nil || result.Requeue {
 		return result, err
@@ -265,13 +270,13 @@ func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqIn
 		return ctrl.Result{}, err
 	}
 	if !(isExists) {
-		return r.createStatefulSet(ctx, reqInfraBlockSpace)
+		return r.createStatefulSet(ctx, name, reqInfraBlockSpace)
 	} else {
 		return r.updateStatefulSet(ctx, name, reqInfraBlockSpace)
 	}
 }
 
-func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 
 	initContainers := r.getInitContainers(reqInfraBlockSpace)
 	mainContainers := r.getMainContainers(reqInfraBlockSpace)
@@ -279,10 +284,11 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, reqIn
 
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      reqInfraBlockSpace.Name,
+			Name:      name,
 			Namespace: reqInfraBlockSpace.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
+			ServiceName: name + "-" + chain.SuffixHeadlessService,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					InitContainers: initContainers,
@@ -374,34 +380,37 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 			return ctrl.Result{}, err
 		}
 	}
+	err = r.updateServices(ctx, name, reqInfraBlockSpace)
 	return ctrl.Result{}, nil
 }
 
 func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
-	if err := r.createService(ctx, name, reqInfraBlockSpace, false); err != nil {
+	if err := r.createHeadlessService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
 	}
-	if err := r.createService(ctx, name, reqInfraBlockSpace, true); err != nil {
+	if err := r.createHeadlessService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, isHeadless bool) error {
-	name = util.GenerateResourceName(name, getSuffix(isHeadless))
-	var ports []int32
-	if reqInfraBlockSpace.Spec.Port.WSPort == 0 {
-		ports = chain.GetDefaultRelayPorts()
-	} else {
-		ports = chain.GetCustomRelayPorts(reqInfraBlockSpace.Spec.Port)
-	}
+func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	ports := chain.GetServicePorts(reqInfraBlockSpace)
 	servicePorts := chain.GenerateServicePorts(ports...)
-	var service *corev1.Service
-	if isHeadless {
-		service = chain.GenerateHeadlessServiceObject(name, reqInfraBlockSpace.Namespace, servicePorts, nil)
-	} else {
-		service = chain.GenerateClusterIpServiceObject(name, reqInfraBlockSpace.Namespace, servicePorts, nil)
-	}
+	service := chain.GenerateHeadlessServiceObject(name+"-"+chain.SuffixHeadlessService, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	err := r.createService(ctx, service, reqInfraBlockSpace)
+	return err
+}
+
+func (r *InfraBlockSpaceReconciler) createClusterIPService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	ports := chain.GetServicePorts(reqInfraBlockSpace)
+	servicePorts := chain.GenerateServicePorts(ports...)
+	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	err := r.createService(ctx, service, reqInfraBlockSpace)
+	return err
+}
+
+func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, service *corev1.Service, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 	if err := r.Create(ctx, service); err != nil {
 		return err
 	}
@@ -409,16 +418,9 @@ func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, name stri
 	logger.Info("created service", zapcore.Field{
 		Key:    "Name",
 		Type:   zapcore.StringType,
-		String: name,
+		String: service.Name,
 	})
 	return nil
-}
-
-func getSuffix(isHeadless bool) string {
-	if isHeadless {
-		return chain.SuffixHeadlessService
-	}
-	return chain.SuffixService
 }
 
 func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Container {
