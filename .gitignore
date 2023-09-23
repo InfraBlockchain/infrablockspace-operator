@@ -8,7 +8,7 @@
 bin
 testbin/*
 Dockerfile.cross
-
+.scannerwork
 # Test binary, build with `go test -c`
 *.test
 
