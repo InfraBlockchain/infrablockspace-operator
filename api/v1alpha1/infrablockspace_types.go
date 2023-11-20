@@ -49,7 +49,7 @@ type InfraBlockSpaceSpec struct {
 	ChainSpec string `json:"chainSpec,omitempty"`
 
 	// keys is the keys of the InfraBlockSpace
-	Keys *[]chain.Key `json:"keys,omitempty"`
+	Keys []chain.Key `json:"keys,omitempty"`
 
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.

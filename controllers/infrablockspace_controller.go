@@ -101,11 +101,11 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 
-	if *reqInfraBlockSpace.Spec.Keys == nil {
+	if reqInfraBlockSpace.Spec.Keys == nil {
 		return nil
 	}
 
-	for _, key := range *reqInfraBlockSpace.Spec.Keys {
+	for _, key := range reqInfraBlockSpace.Spec.Keys {
 		secret := &corev1.Secret{}
 		name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, key.KeyType)
 		isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, secret)
