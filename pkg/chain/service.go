@@ -1,18 +1,17 @@
 package chain
 
 import (
-	infrablockspacenetv1alpha1 "github.com/InfraBlockchain/infrablockspace-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetServicePorts(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []int32 {
+func GetServicePorts(chainPort Port) []int32 {
 	var ports []int32
-	if reqInfraBlockSpace.Spec.Port.WSPort == 0 {
+	if chainPort.WSPort == 0 {
 		ports = getDefaultRelayPorts()
 	} else {
-		ports = getCustomRelayPorts(reqInfraBlockSpace.Spec.Port)
+		ports = getCustomRelayPorts(chainPort)
 	}
 	return ports
 }
