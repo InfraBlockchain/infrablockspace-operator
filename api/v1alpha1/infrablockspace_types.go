@@ -81,9 +81,11 @@ type InfraBlockSpaceStatus struct {
 	ChainSpec string `json:"chainSpec,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Size",type=integer,JSONPath=`.spec.Replicas`
+// +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.spec.Region`
+// +kubebuilder:printcolumn:name="Rack",type=string,JSONPath=`.spec.Rack`
 // InfraBlockSpace is the Schema for the infrablockspaces API
 type InfraBlockSpace struct {
 	metav1.TypeMeta   `json:",inline"`
