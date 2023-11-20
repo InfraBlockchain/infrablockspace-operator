@@ -38,12 +38,14 @@ func GenerateHeadlessServiceObject(name, namespace string, ports []corev1.Servic
 
 func GenerateServicePorts(ports ...int32) []corev1.ServicePort {
 	log.Println("ports - ", ports)
+	portsNames := []string{"ws", "rpc", "p2p"}
 	servicePorts := make([]corev1.ServicePort, len(ports))
 	for idx, port := range ports {
 		servicePorts[idx] = corev1.ServicePort{
 			Port:       port,
 			TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: port},
 			Protocol:   corev1.ProtocolTCP,
+			Name:       portsNames[idx],
 		}
 	}
 	log.Println("servicePorts - ", servicePorts)
