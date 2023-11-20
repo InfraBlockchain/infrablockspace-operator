@@ -39,12 +39,12 @@ func GenerateHeadlessServiceObject(name, namespace string, ports []corev1.Servic
 func GenerateServicePorts(ports ...int32) []corev1.ServicePort {
 	log.Println("ports - ", ports)
 	servicePorts := make([]corev1.ServicePort, len(ports))
-	for _, port := range ports {
-		servicePorts = append(servicePorts, corev1.ServicePort{
+	for idx, port := range ports {
+		servicePorts[idx] = corev1.ServicePort{
 			Port:       port,
 			TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: port},
 			Protocol:   corev1.ProtocolTCP,
-		})
+		}
 	}
 	log.Println("servicePorts - ", servicePorts)
 	return servicePorts
