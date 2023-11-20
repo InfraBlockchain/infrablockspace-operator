@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"log"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -75,6 +76,7 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
+	log.Println("infrablockspace - ", reqInfraBlockSpace)
 	err = r.ensureChainSecrets(ctx, reqInfraBlockSpace)
 
 	if err != nil {
@@ -401,7 +403,7 @@ func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name str
 	if err := r.createHeadlessService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
 	}
-	if err := r.createHeadlessService(ctx, name, reqInfraBlockSpace); err != nil {
+	if err := r.createClusterIPService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
 	}
 	return nil
