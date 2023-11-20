@@ -12,9 +12,9 @@ func CreateChainSpecVolumeMount() []corev1.VolumeMount {
 }
 
 // CreateKeyStoreVolumeMount creates a volume mount for the key store
-func CreateKeyStoreVolumeMount(keys *[]Key) []corev1.VolumeMount {
+func CreateKeyStoreVolumeMount(keys []Key) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{generateVolumeMount(KeyStore, KeyStoreMountPath)}
-	for _, key := range *keys {
+	for _, key := range keys {
 		mountPath := fmt.Sprintf("/var/run/secrets/%s", key.KeyType)
 		volumeMounts = append(volumeMounts, generateVolumeMount(key.KeyType, mountPath))
 	}
@@ -29,9 +29,9 @@ func generateVolumeMount(name, mountPath string) corev1.VolumeMount {
 	}
 }
 
-func GetSecretVolumes(name, region, rack string, keys *[]Key) []corev1.Volume {
-	volumes := make([]corev1.Volume, len(*keys))
-	for _, key := range *keys {
+func GetSecretVolumes(name, region, rack string, keys []Key) []corev1.Volume {
+	volumes := make([]corev1.Volume, len(keys))
+	for _, key := range keys {
 		secretName := util.GenerateResourceName(name, region, rack, key.KeyType)
 		secretVolume := getSecretVolume(key.KeyType, secretName)
 		volumes = append(volumes, secretVolume)

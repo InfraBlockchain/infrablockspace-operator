@@ -35,7 +35,7 @@ func GetDownloadSpecCommand(chainSpecUrl, fileName string) []string {
 	}
 }
 
-func GetInjectKeyCommandAndArgs(keys *[]Key) ([]string, []string) {
+func GetInjectKeyCommandAndArgs(keys []Key) ([]string, []string) {
 	commands := []string{"/bin/sh"}
 	injectKeyStoreScript := render.RenderingInTemplate(InjectKeyScript, keys)
 	args := []string{
