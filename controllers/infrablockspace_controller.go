@@ -144,7 +144,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 
 }
 func (r *InfraBlockSpaceReconciler) checkResourceExists(ctx context.Context, namespace string, name string, obj client.Object) (bool, error) {
-	if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name + "-" + chain.SuffixHeadlessService}, obj); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 		logger.Error(err)
 		if kerrors.IsNotFound(err) { // create
 			return false, nil
@@ -379,7 +379,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 
 func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
-	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.Service{})
+	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name+"-"+chain.SuffixHeadlessService, &corev1.Service{})
 	if err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
