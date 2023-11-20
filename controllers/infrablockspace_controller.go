@@ -404,7 +404,7 @@ func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name str
 }
 
 func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
-	ports := chain.GetServicePorts(reqInfraBlockSpace)
+	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
 	servicePorts := chain.GenerateServicePorts(ports...)
 	service := chain.GenerateHeadlessServiceObject(name+"-"+chain.SuffixHeadlessService, reqInfraBlockSpace.Namespace, servicePorts, nil)
 	err := r.createService(ctx, service, reqInfraBlockSpace)
@@ -412,7 +412,7 @@ func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, n
 }
 
 func (r *InfraBlockSpaceReconciler) createClusterIPService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
-	ports := chain.GetServicePorts(reqInfraBlockSpace)
+	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
 	servicePorts := chain.GenerateServicePorts(ports...)
 	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, nil)
 	err := r.createService(ctx, service, reqInfraBlockSpace)
@@ -434,7 +434,7 @@ func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, service *
 
 func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 
-	ports := chain.GetServicePorts(reqInfraBlockSpace)
+	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
 	servicePorts := chain.GenerateServicePorts(ports...)
 	foundService := &corev1.Service{}
 	serviceNames := []string{name + "-" + chain.SuffixHeadlessService, name + "-" + chain.SuffixService}
