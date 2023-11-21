@@ -483,11 +483,11 @@ func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrab
 	args := chain.GetRelayChainArgs(reqInfraBlockSpace.Spec.Port, isBootNode, reqInfraBlockSpace.Spec.BootNodes)
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      name + "-" + chain.SuffixPvc,
+			Name:      name + "-relay",
 			MountPath: "/data/infrablockspace",
 		},
 		{
-			Name:      "infrablockspace-spec",
+			Name:      "chain-spec",
 			MountPath: "/tmp",
 		},
 	}
@@ -505,7 +505,7 @@ func (r *InfraBlockSpaceReconciler) getVolumes(reqInfraBlockSpace *infrablockspa
 	var volumes []corev1.Volume
 	secretVolumes := chain.GetSecretVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, reqInfraBlockSpace.Spec.Keys)
 	pvcVolumes := chain.GetPvcVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.RelayChain)
-	chainSpec := chain.GetEmptyDir("infrablockspace-spec")
+	chainSpec := chain.GetEmptyDir("chain-spec")
 	keyStore := chain.GetEmptyDir("chain-keystore")
 	volumes = append(volumes, secretVolumes...)
 	volumes = append(volumes, pvcVolumes...)
