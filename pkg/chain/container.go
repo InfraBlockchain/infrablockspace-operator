@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+
 	"github.com/InfraBlockchain/infrablockspace-operator/pkg/render"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -62,7 +63,7 @@ func appendRelayChainArgs(args []string, ports ...string) []string {
 		"--base-path",
 		"/data/relay",
 		"--chain",
-		"/tmp/raw-local-chainspec.json",
+		"/tmp/relay-chain-spec.json",
 		"--prometheus-external",
 		"--prometheus-port=9615",
 		"--unsafe-rpc-external",
