@@ -118,7 +118,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqI
 				return err
 			}
 		} else {
-			if err = r.updateSecret(ctx, reqInfraBlockSpace.Namespace, name, key); err != nil {
+			if err = r.updateSecret(ctx, reqInfraBlockSpace, name, key); err != nil {
 				return err
 			}
 		}
@@ -138,7 +138,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 		return r.createChainPVC(ctx, name, reqInfraBlockSpace)
 	} else {
 		// update
-		return r.updateChainPVC(ctx, name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size)
+		return r.updateChainPVC(ctx, name, reqInfraBlockSpace)
 	}
 
 }
@@ -185,14 +185,14 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, reqInfraBl
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace, name string, key chain.Key) error {
+func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, name string, key chain.Key) error {
 	if err := r.validateKey(key); err != nil {
 		logger.Error(err)
 		return err
 	}
 
 	foundSecret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundSecret); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundSecret); err != nil {
 		logger.Error(err)
 		return err
 	}
@@ -217,7 +217,7 @@ func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, namespace,
 			String: key.KeyType,
 		})
 	}
-
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundSecret, r.Scheme)
 	return nil
 }
 
@@ -247,17 +247,17 @@ func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name str
 	})
 	return ctrl.Result{Requeue: true}, nil
 }
-func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name, namespace, size string) (ctrl.Result, error) {
-	if size == "" {
+func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+	if reqInfraBlockSpace.Spec.Size == "" {
 		return ctrl.Result{}, errors.New("size is required")
 	}
 	foundPVC := &corev1.PersistentVolumeClaim{}
-	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundPVC); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundPVC); err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	if !chain.IsSamePvcSize(*foundPVC.Spec.Resources.Requests.Storage(), resource.MustParse(size)) {
-		*foundPVC.Spec.Resources.Requests.Storage() = resource.MustParse(size)
+	if !chain.IsSamePvcSize(*foundPVC.Spec.Resources.Requests.Storage(), resource.MustParse(reqInfraBlockSpace.Spec.Size)) {
+		*foundPVC.Spec.Resources.Requests.Storage() = resource.MustParse(reqInfraBlockSpace.Spec.Size)
 		if err := r.Update(ctx, foundPVC); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
@@ -268,6 +268,7 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name, na
 		Type:   zapcore.StringType,
 		String: name,
 	})
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
 	return ctrl.Result{}, nil
 }
 func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
@@ -357,6 +358,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
+		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -366,6 +368,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
+		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -375,15 +378,17 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
+		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	}
-
+	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 	if foundStatefulSet.Spec.Template.Spec.Containers[0].Lifecycle != reqInfraBlockSpace.Spec.Lifecycle {
 		foundStatefulSet.Spec.Template.Spec.Containers[0].Lifecycle = reqInfraBlockSpace.Spec.Lifecycle
 		if err := r.Update(ctx, foundStatefulSet); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
+		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	}
 	return ctrl.Result{}, nil
@@ -472,6 +477,7 @@ func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name str
 				logger.Error(err)
 				return err
 			}
+			_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundService, r.Scheme)
 		}
 	}
 
