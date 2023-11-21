@@ -41,10 +41,10 @@ func GetSecretVolumes(name, region, rack string, keys []Key) []corev1.Volume {
 
 func GetPvcVolumes(name, region, rack string, chainTypes ...ChainType) []corev1.Volume {
 	volumes := make([]corev1.Volume, len(chainTypes))
-	for _, mode := range chainTypes {
+	for i, mode := range chainTypes {
 		pvcName := util.GenerateResourceName(name, region, rack, string(mode))
 		pvcVolume := getPvcVolume(string(mode), pvcName)
-		volumes = append(volumes, pvcVolume)
+		volumes[i] = pvcVolume
 	}
 	return volumes
 }
