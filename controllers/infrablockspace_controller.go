@@ -92,10 +92,10 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
-	if err != nil || result.Requeue {
-		return result, err
-	}
+	//result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
+	//if err != nil || result.Requeue {
+	//	return result, err
+	//}
 
 	return ctrl.Result{}, nil
 }
@@ -245,7 +245,7 @@ func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name str
 		Type:   zapcore.StringType,
 		String: name,
 	})
-	return ctrl.Result{Requeue: true}, nil
+	return ctrl.Result{}, nil
 }
 func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 	if reqInfraBlockSpace.Spec.Size == "" {
