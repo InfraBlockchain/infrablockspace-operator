@@ -15,10 +15,10 @@ func CreateInitContainer(name, image string, commands []string, volumeMounts []c
 	}
 }
 
-func CreateChainContainer(name, image string, commands, args []string, volumeMounts []corev1.VolumeMount) corev1.Container {
+func CreateChainContainer(name, imageVersion string, commands, args []string, volumeMounts []corev1.VolumeMount) corev1.Container {
 	return corev1.Container{
 		Name:         name,
-		Image:        image,
+		Image:        fmt.Sprintf("public.ecr.aws/v8x3j0k5/infrablockspace:%s", imageVersion),
 		Args:         args,
 		Command:      commands,
 		VolumeMounts: volumeMounts,
