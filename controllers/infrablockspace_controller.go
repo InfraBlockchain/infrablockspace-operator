@@ -127,7 +127,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqI
 }
 
 func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
-	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
+	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, string(chain.RelayChain))
 	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.PersistentVolumeClaim{})
 	if !(isExists) {
 		if err != nil {
@@ -135,7 +135,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 			return ctrl.Result{}, err
 		}
 		// create
-		return r.createChainPVC(ctx, name+"-relay", reqInfraBlockSpace)
+		return r.createChainPVC(ctx, name, reqInfraBlockSpace)
 	} else {
 		// update
 		return r.updateChainPVC(ctx, name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size)
