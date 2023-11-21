@@ -240,11 +240,11 @@ func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name str
 		reqInfraBlockSpace.Spec.Size = chain.VolumeSize100Gi
 	}
 	pvc := chain.CreateChainPVC(name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
+	ctrl.SetControllerReference(reqInfraBlockSpace, pvc, r.Scheme)
 	if err := r.Create(ctx, pvc); err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	ctrl.SetControllerReference(reqInfraBlockSpace, pvc, r.Scheme)
 	logger.Info("created pvc", zapcore.Field{
 		Key:    "Name",
 		Type:   zapcore.StringType,
@@ -261,8 +261,10 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name str
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
+
 	if !chain.IsSamePvcSize(*foundPVC.Spec.Resources.Requests.Storage(), resource.MustParse(reqInfraBlockSpace.Spec.Size)) {
 		*foundPVC.Spec.Resources.Requests.Storage() = resource.MustParse(reqInfraBlockSpace.Spec.Size)
+		//ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
 		if err := r.Update(ctx, foundPVC); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
@@ -273,7 +275,7 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name str
 		Type:   zapcore.StringType,
 		String: name,
 	})
-	ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
+
 	return ctrl.Result{}, nil
 }
 func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
