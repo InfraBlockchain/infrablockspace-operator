@@ -507,7 +507,7 @@ func (r *InfraBlockSpaceReconciler) getVolumes(reqInfraBlockSpace *infrablockspa
 	pvcVolumes := chain.GetPvcVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.RelayChain)
 	chainSpec := chain.GetEmptyDir("chain-spec")
 	keyStore := chain.GetEmptyDir("chain-keystore")
-	if len(secretVolumes) != 0 {
+	if secretVolumes[0].Name != "" {
 		volumes = append(volumes, secretVolumes...)
 	}
 	volumes = append(volumes, pvcVolumes...)
