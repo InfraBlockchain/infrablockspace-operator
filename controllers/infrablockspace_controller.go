@@ -127,7 +127,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqI
 }
 
 func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
-	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.SuffixPvc)
+	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
 	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.PersistentVolumeClaim{})
 	if !(isExists) {
 		if err != nil {
@@ -135,7 +135,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 			return ctrl.Result{}, err
 		}
 		// create
-		return r.createChainPVC(ctx, name, reqInfraBlockSpace)
+		return r.createChainPVC(ctx, name+"-relay", reqInfraBlockSpace)
 	} else {
 		// update
 		return r.updateChainPVC(ctx, name, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size)
@@ -287,7 +287,7 @@ func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqIn
 func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 
 	initContainers := r.getInitContainers(reqInfraBlockSpace)
-	mainContainers := r.getMainContainers(reqInfraBlockSpace, name)
+	mainContainers := r.getMainContainers(reqInfraBlockSpace)
 	volumes := r.getVolumes(reqInfraBlockSpace)
 	labels := make(map[string]string)
 	labels["app"] = name
@@ -478,12 +478,12 @@ func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name str
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, name string) []corev1.Container {
+func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Container {
 	isBootNode := reqInfraBlockSpace.Spec.BootNodes == nil
 	args := chain.GetRelayChainArgs(reqInfraBlockSpace.Spec.Port, isBootNode, reqInfraBlockSpace.Spec.BootNodes)
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      name + "-relay",
+			Name:      "relay-pvc",
 			MountPath: "/data/infrablockspace",
 		},
 		{
