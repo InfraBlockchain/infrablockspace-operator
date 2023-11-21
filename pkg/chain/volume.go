@@ -58,6 +58,13 @@ func getSecretVolume(name, secretName string) corev1.Volume {
 	return secretVolume
 }
 
+func GetEmptyDir(name string) corev1.Volume {
+	emptyDir := getVolume()
+	emptyDir.Name = name
+	emptyDir.EmptyDir = &corev1.EmptyDirVolumeSource{}
+	return emptyDir
+}
+
 func getPvcVolume(name, claimName string) corev1.Volume {
 	pvcVolume := getVolume()
 	pvcVolume.Name = name + "-" + SuffixPvc
