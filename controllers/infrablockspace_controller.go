@@ -69,7 +69,6 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	reqInfraBlockSpace := &infrablockspacenetv1alpha1.InfraBlockSpace{}
 	err := r.Get(ctx, req.NamespacedName, reqInfraBlockSpace)
 	if err != nil {
-		logger.Error(err)
 		if kerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -288,7 +287,7 @@ func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqIn
 func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 
 	initContainers := r.getInitContainers(reqInfraBlockSpace)
-	mainContainers := r.getMainContainers(reqInfraBlockSpace)
+	mainContainers := r.getMainContainers(reqInfraBlockSpace, name)
 	volumes := r.getVolumes(reqInfraBlockSpace)
 	labels := make(map[string]string)
 	labels["app"] = name
@@ -479,10 +478,20 @@ func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name str
 	return nil
 }
 
-func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Container {
+func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, name string) []corev1.Container {
 	isBootNode := reqInfraBlockSpace.Spec.BootNodes == nil
 	args := chain.GetRelayChainArgs(reqInfraBlockSpace.Spec.Port, isBootNode, reqInfraBlockSpace.Spec.BootNodes)
-	chainContainer := chain.CreateChainContainer(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.ImageVersion, nil, args, nil)
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      name + "-" + chain.SuffixPvc,
+			MountPath: "/data/infrablockspace",
+		},
+		{
+			Name:      "infrablockspace-spec",
+			MountPath: "/tmp",
+		},
+	}
+	chainContainer := chain.CreateChainContainer(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.ImageVersion, nil, args, volumeMounts)
 	return []corev1.Container{chainContainer}
 }
 
@@ -496,8 +505,11 @@ func (r *InfraBlockSpaceReconciler) getVolumes(reqInfraBlockSpace *infrablockspa
 	var volumes []corev1.Volume
 	secretVolumes := chain.GetSecretVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, reqInfraBlockSpace.Spec.Keys)
 	pvcVolumes := chain.GetPvcVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.RelayChain)
+	chainSpec := chain.GetEmptyDir("infrablockspace-spec")
+	keyStore := chain.GetEmptyDir("chain-keystore")
 	volumes = append(volumes, secretVolumes...)
 	volumes = append(volumes, pvcVolumes...)
+	volumes = append(volumes, chainSpec, keyStore)
 	return volumes
 }
 
