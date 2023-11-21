@@ -60,7 +60,7 @@ func getSecretVolume(name, secretName string) corev1.Volume {
 
 func getPvcVolume(name, claimName string) corev1.Volume {
 	pvcVolume := getVolume()
-	pvcVolume.Name = name
+	pvcVolume.Name = name + "-" + SuffixPvc
 	pvcVolume.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{
 		ClaimName: claimName,
 	}
