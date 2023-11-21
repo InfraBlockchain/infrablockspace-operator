@@ -70,12 +70,17 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	err := r.Get(ctx, req.NamespacedName, reqInfraBlockSpace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			log.Println("InfraBlockSpaceReconciler resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
+		// Error reading the object - requeue the request.
+		log.Println(err, "Failed to get InfraBlockSpace")
 		return ctrl.Result{}, err
 	}
 
-	log.Println("infrablockspace - ", reqInfraBlockSpace)
 	err = r.ensureChainSecrets(ctx, reqInfraBlockSpace)
 
 	if err != nil {
@@ -87,10 +92,10 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	_, err = r.ensureService(ctx, reqInfraBlockSpace)
-	if err != nil {
-		return result, err
-	}
+	//_, err = r.ensureService(ctx, reqInfraBlockSpace)
+	//if err != nil {
+	//	return result, err
+	//}
 
 	//result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
 	//if err != nil || result.Requeue {
@@ -239,7 +244,7 @@ func (r *InfraBlockSpaceReconciler) createChainPVC(ctx context.Context, name str
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, pvc, r.Scheme)
+	ctrl.SetControllerReference(reqInfraBlockSpace, pvc, r.Scheme)
 	logger.Info("created pvc", zapcore.Field{
 		Key:    "Name",
 		Type:   zapcore.StringType,
@@ -268,7 +273,7 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name str
 		Type:   zapcore.StringType,
 		String: name,
 	})
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
+	ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
 	return ctrl.Result{}, nil
 }
 func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
@@ -358,7 +363,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
-		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+		ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
