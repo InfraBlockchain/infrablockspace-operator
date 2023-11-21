@@ -290,7 +290,14 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 	initContainers := r.getInitContainers(reqInfraBlockSpace)
 	mainContainers := r.getMainContainers(reqInfraBlockSpace)
 	volumes := r.getVolumes(reqInfraBlockSpace)
-
+	labels := make(map[string]string)
+	labels["app"] = name
+	if reqInfraBlockSpace.Spec.Rack != "" {
+		labels["rack"] = reqInfraBlockSpace.Spec.Rack
+	}
+	if reqInfraBlockSpace.Spec.Region != "" {
+		labels["region"] = reqInfraBlockSpace.Spec.Region
+	}
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -298,7 +305,13 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: name + "-" + chain.SuffixHeadlessService,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
 				Spec: corev1.PodSpec{
 					InitContainers: initContainers,
 					Containers:     mainContainers,
@@ -469,7 +482,7 @@ func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name str
 func (r *InfraBlockSpaceReconciler) getMainContainers(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Container {
 	isBootNode := reqInfraBlockSpace.Spec.BootNodes == nil
 	args := chain.GetRelayChainArgs(reqInfraBlockSpace.Spec.Port, isBootNode, reqInfraBlockSpace.Spec.BootNodes)
-	chainContainer := chain.CreateChainContainer(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Image, nil, args, nil)
+	chainContainer := chain.CreateChainContainer(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.ImageVersion, nil, args, nil)
 	return []corev1.Container{chainContainer}
 }
 
@@ -497,7 +510,7 @@ func (r *InfraBlockSpaceReconciler) createDownloadChainSpecInitContainer(chainSp
 func (r *InfraBlockSpaceReconciler) createInjectKeysInitContainer(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) corev1.Container {
 	commands, args := chain.GetInjectKeyCommandAndArgs(reqInfraBlockSpace.Spec.Keys)
 	volumeMounts := chain.CreateKeyStoreVolumeMount(reqInfraBlockSpace.Spec.Keys)
-	container := chain.CreateChainContainer(chain.InjectKeysContainer, reqInfraBlockSpace.Spec.Image, commands, args, volumeMounts)
+	container := chain.CreateChainContainer(chain.InjectKeysContainer, reqInfraBlockSpace.Spec.ImageVersion, commands, args, volumeMounts)
 	return container
 }
 
