@@ -92,15 +92,15 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	//_, err = r.ensureService(ctx, reqInfraBlockSpace)
-	//if err != nil {
-	//	return result, err
-	//}
+	_, err = r.ensureService(ctx, reqInfraBlockSpace)
+	if err != nil {
+		return result, err
+	}
 
-	//result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
-	//if err != nil || result.Requeue {
-	//	return result, err
-	//}
+	result, err = r.ensureStatefulSet(ctx, reqInfraBlockSpace)
+	if err != nil || result.Requeue {
+		return result, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -177,7 +177,7 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, reqInfraBl
 			"scheme": key.Scheme,
 		},
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, secret, r.Scheme)
+	ctrl.SetControllerReference(reqInfraBlockSpace, secret, r.Scheme)
 	if err := r.Create(ctx, secret); err != nil {
 		logger.Error(err)
 		return err
@@ -222,7 +222,7 @@ func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, reqInfraBl
 			String: key.KeyType,
 		})
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundSecret, r.Scheme)
+
 	return nil
 }
 
@@ -264,7 +264,6 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name str
 
 	if !chain.IsSamePvcSize(*foundPVC.Spec.Resources.Requests.Storage(), resource.MustParse(reqInfraBlockSpace.Spec.Size)) {
 		*foundPVC.Spec.Resources.Requests.Storage() = resource.MustParse(reqInfraBlockSpace.Spec.Size)
-		//ctrl.SetControllerReference(reqInfraBlockSpace, foundPVC, r.Scheme)
 		if err := r.Update(ctx, foundPVC); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
@@ -344,11 +343,13 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 		statefulSet.Spec.Template.Spec.Containers[0].Lifecycle = reqInfraBlockSpace.Spec.Lifecycle
 	}
 
+	ctrl.SetControllerReference(reqInfraBlockSpace, statefulSet, r.Scheme)
+
 	if err := r.Create(ctx, statefulSet); err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, statefulSet, r.Scheme)
+
 	return ctrl.Result{Requeue: true}, nil
 }
 
@@ -365,7 +366,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
-		ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -375,7 +376,7 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
-		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -385,17 +386,17 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
-		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+
 		return ctrl.Result{Requeue: true}, nil
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+
 	if foundStatefulSet.Spec.Template.Spec.Containers[0].Lifecycle != reqInfraBlockSpace.Spec.Lifecycle {
 		foundStatefulSet.Spec.Template.Spec.Containers[0].Lifecycle = reqInfraBlockSpace.Spec.Lifecycle
 		if err := r.Update(ctx, foundStatefulSet); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
-		_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundStatefulSet, r.Scheme)
+
 		return ctrl.Result{Requeue: true}, nil
 	}
 	return ctrl.Result{}, nil
@@ -450,10 +451,10 @@ func (r *InfraBlockSpaceReconciler) createClusterIPService(ctx context.Context, 
 }
 
 func (r *InfraBlockSpaceReconciler) createService(ctx context.Context, service *corev1.Service, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	ctrl.SetControllerReference(reqInfraBlockSpace, service, r.Scheme)
 	if err := r.Create(ctx, service); err != nil {
 		return err
 	}
-	_ = ctrl.SetControllerReference(reqInfraBlockSpace, service, r.Scheme)
 	logger.Info("created service", zapcore.Field{
 		Key:    "Name",
 		Type:   zapcore.StringType,
@@ -484,7 +485,6 @@ func (r *InfraBlockSpaceReconciler) updateServices(ctx context.Context, name str
 				logger.Error(err)
 				return err
 			}
-			_ = ctrl.SetControllerReference(reqInfraBlockSpace, foundService, r.Scheme)
 		}
 	}
 
