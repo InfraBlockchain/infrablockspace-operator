@@ -273,7 +273,7 @@ func (r *InfraBlockSpaceReconciler) updateChainPVC(ctx context.Context, name, na
 }
 func (r *InfraBlockSpaceReconciler) ensureStatefulSet(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
 	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
-	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &corev1.PersistentVolumeClaim{})
+	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &appsv1.StatefulSet{})
 	if err != nil {
 		logger.Error(err)
 		return ctrl.Result{}, err
