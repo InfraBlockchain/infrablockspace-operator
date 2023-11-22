@@ -46,13 +46,13 @@ func GetInjectKeyCommandAndArgs(keys []Key) ([]string, []string) {
 	return commands, args
 }
 
-func GetRelayChainArgs(port Port, isBoot bool, bootNodesUrl *[]string) []string {
+func GetRelayChainArgs(port Port, isBoot bool, bootNodesUrl []string) []string {
 	validatorArgs := getChainArgs(RelayChain)
 	rpc := fmt.Sprintf("--rpc-port=%d", port.RPCPort)
 	ws := fmt.Sprintf("--ws-port=%d", port.WSPort)
 	validatorArgs = appendRelayChainArgs(validatorArgs, rpc, ws)
 	if !(isBoot) {
-		validatorArgs = appendBootNods(validatorArgs, *bootNodesUrl...)
+		validatorArgs = appendBootNods(validatorArgs, bootNodesUrl...)
 	}
 	return validatorArgs
 
