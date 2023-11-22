@@ -123,6 +123,9 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	result, err = r.ensurePeer(ctx, reqInfraBlockSpace)
+	if err != nil {
+		return result, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -472,8 +475,10 @@ func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, n
 	selector := make(map[string]string)
 	selector["app"] = name
 	service := chain.GenerateHeadlessServiceObject(name+"-"+chain.SuffixHeadlessService, reqInfraBlockSpace.Namespace, servicePorts, selector)
-	err := r.createService(ctx, service, reqInfraBlockSpace)
-	return err
+	if err := r.createService(ctx, service, reqInfraBlockSpace); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *InfraBlockSpaceReconciler) createClusterIPService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
@@ -602,20 +607,25 @@ func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name str
 	if reqInfraBlockSpace.Status.Mode == "PEER" {
 		return nil
 	}
-	foundStatefulset := &appsv1.StatefulSet{}
-	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundStatefulset); err != nil {
+	foundStatefulSet := &appsv1.StatefulSet{}
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundStatefulSet); err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil
 		}
 		logger.Error(err)
 		return err
 	}
-	if *foundStatefulset.Spec.Replicas > reqInfraBlockSpace.Spec.Replicas {
-		for i := *foundStatefulset.Spec.Replicas; i > reqInfraBlockSpace.Spec.Replicas; i-- {
+	if reqInfraBlockSpace.Status.Replicas > reqInfraBlockSpace.Spec.Replicas {
+		for i := *foundStatefulSet.Spec.Replicas; i > reqInfraBlockSpace.Spec.Replicas; i-- {
 			name := fmt.Sprintf("%s-%d-peer-service", name, i-1)
-			if err := r.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+			if err := r.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: reqInfraBlockSpace.Namespace}}); err != nil {
 				return err
 			}
+		}
+		reqInfraBlockSpace.Status.Replicas = reqInfraBlockSpace.Spec.Replicas
+		if err := r.Status().Update(ctx, reqInfraBlockSpace); err != nil {
+			logger.Error(err)
+			return err
 		}
 	}
 	return nil
@@ -643,7 +653,7 @@ func (r *InfraBlockSpaceReconciler) ensurePeer(ctx context.Context, reqInfraBloc
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	if !(isExists) {
+	if isExists {
 		if err := r.createPeerServices(ctx, name, reqInfraBlockSpace); err != nil {
 			return ctrl.Result{}, err
 		}
