@@ -32,10 +32,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"log"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	klog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sort"
 )
 
@@ -65,7 +65,7 @@ type InfraBlockSpaceReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
+	log := klog.FromContext(ctx)
 	reqInfraBlockSpace := &infrablockspacenetv1alpha1.InfraBlockSpace{}
 	err := r.Get(ctx, req.NamespacedName, reqInfraBlockSpace)
 	if err != nil {
@@ -73,14 +73,28 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Println("InfraBlockSpaceReconciler resource not found. Ignoring since object must be deleted")
+			log.Info("InfraBlockSpaceReconciler resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
+
 		}
 		// Error reading the object - requeue the request.
-		log.Println(err, "Failed to get InfraBlockSpace")
+		log.Error(err, "Failed to get InfraBlockSpace")
 		return ctrl.Result{}, err
 	}
+	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" || reqInfraBlockSpace.Status.Replicas == 0 {
+		reqInfraBlockSpace.Status.Region = reqInfraBlockSpace.Spec.Region
+		reqInfraBlockSpace.Status.Rack = reqInfraBlockSpace.Spec.Rack
+		reqInfraBlockSpace.Status.Replicas = reqInfraBlockSpace.Spec.Replicas
+		if err = r.Status().Update(ctx, reqInfraBlockSpace); err != nil {
+			log.Error(err, "Failed to update Memcached status")
+			return ctrl.Result{}, err
+		}
 
+		if err := r.Get(ctx, req.NamespacedName, reqInfraBlockSpace); err != nil {
+			log.Error(err, "Failed to re-fetch memcached")
+			return ctrl.Result{}, err
+		}
+	}
 	err = r.ensureChainSecrets(ctx, reqInfraBlockSpace)
 
 	if err != nil {
