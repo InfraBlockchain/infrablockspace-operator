@@ -663,7 +663,6 @@ func (r *InfraBlockSpaceReconciler) ensurePeer(ctx context.Context, reqInfraBloc
 	}
 
 	if err = r.DeleteServices(ctx, name, reqInfraBlockSpace); err != nil {
-		logger.Error(err)
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

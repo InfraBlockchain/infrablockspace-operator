@@ -4,7 +4,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"log"
 )
 
 func GetServicePorts(chainPort Port) []int32 {
@@ -37,7 +36,6 @@ func GenerateHeadlessServiceObject(name, namespace string, ports []corev1.Servic
 }
 
 func GenerateServicePorts(ports ...int32) []corev1.ServicePort {
-	log.Println("ports - ", ports)
 	portsNames := []string{"ws", "rpc", "p2p"}
 	servicePorts := make([]corev1.ServicePort, len(ports))
 	for idx, port := range ports {
@@ -48,7 +46,6 @@ func GenerateServicePorts(ports ...int32) []corev1.ServicePort {
 			Name:       portsNames[idx],
 		}
 	}
-	log.Println("servicePorts - ", servicePorts)
 	return servicePorts
 }
 
