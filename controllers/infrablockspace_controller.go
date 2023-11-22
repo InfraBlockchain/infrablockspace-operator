@@ -635,7 +635,7 @@ func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name str
 func (r *InfraBlockSpaceReconciler) createPeerServices(ctx context.Context, name string, space *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 	var idx int32 = 0
 	for idx < space.Spec.Replicas {
-		name := fmt.Sprintf("%s-%d-peer-service", name, idx)
+		name := fmt.Sprintf("%s-%d-peer", name, idx)
 		if err := r.createPeerService(ctx, name, space); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				return err
