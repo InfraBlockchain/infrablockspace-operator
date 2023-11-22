@@ -448,10 +448,10 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 			logger.Error(err)
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	if err = r.updateServices(ctx, name, reqInfraBlockSpace); err != nil {
-		logger.Error(err)
 		return ctrl.Result{}, err
 	}
 
