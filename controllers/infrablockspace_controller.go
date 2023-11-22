@@ -101,12 +101,12 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	//result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
-	//if err != nil || result.Requeue {
-	//	return result, err
-	//}
+	result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
+	if err != nil || result.Requeue {
+		return result, err
+	}
 
-	result, err := r.ensureService(ctx, reqInfraBlockSpace)
+	result, err = r.ensureService(ctx, reqInfraBlockSpace)
 	if err != nil {
 		return result, err
 	}
@@ -323,6 +323,7 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 	}
 	pvcName := util.GenerateResourceName(name, string(chain.RelayChain))
 	pvc := chain.CreateChainPVC(pvcName, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
+
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -539,13 +540,13 @@ func (r *InfraBlockSpaceReconciler) getInitContainers(reqInfraBlockSpace *infrab
 func (r *InfraBlockSpaceReconciler) getVolumes(reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) []corev1.Volume {
 	var volumes []corev1.Volume
 	secretVolumes := chain.GetSecretVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, reqInfraBlockSpace.Spec.Keys)
-	pvcVolumes := chain.GetPvcVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.RelayChain)
+	//pvcVolumes := chain.GetPvcVolumes(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, chain.RelayChain)
 	chainSpec := chain.GetEmptyDir("chain-spec")
 	keyStore := chain.GetEmptyDir("chain-keystore")
 	if len(secretVolumes) != 0 {
 		volumes = append(volumes, secretVolumes...)
 	}
-	volumes = append(volumes, pvcVolumes...)
+	//volumes = append(volumes, pvcVolumes...)
 	volumes = append(volumes, chainSpec, keyStore)
 	return volumes
 }
