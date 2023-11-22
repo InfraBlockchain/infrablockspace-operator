@@ -78,9 +78,10 @@ type InfraBlockSpaceSpec struct {
 type InfraBlockSpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Region string `json:"region,omitempty"`
-	Rack   string `json:"rack,omitempty"`
-	Mode   string `json:"mode,omitempty"`
+	Region   string `json:"region,omitempty"`
+	Rack     string `json:"rack,omitempty"`
+	Mode     string `json:"mode,omitempty"`
+	Replicas int32  `json:"replicas,omitempty"`
 }
 
 // +kubebuilder:object:root=true
