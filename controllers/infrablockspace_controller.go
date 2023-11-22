@@ -495,7 +495,7 @@ func (r *InfraBlockSpaceReconciler) createPeerService(ctx context.Context, name 
 	servicePorts := chain.GenerateServicePorts(ports...)
 	selector := make(map[string]string)
 	selector["statefulset.kubernetes.io/pod-name"] = name
-	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, selector)
+	service := chain.GenerateClusterIpServiceObject(name+"-peer-service", reqInfraBlockSpace.Namespace, servicePorts, selector)
 	err := r.createService(ctx, service, reqInfraBlockSpace)
 	return err
 }
@@ -634,7 +634,7 @@ func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name str
 func (r *InfraBlockSpaceReconciler) createPeerServices(ctx context.Context, name string, space *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 	var idx int32 = 0
 	for idx < space.Spec.Replicas {
-		name := fmt.Sprintf("%s-%d-peer", name, idx)
+		name := fmt.Sprintf("%s-%d", name, idx)
 		if err := r.createPeerService(ctx, name, space); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				return err
