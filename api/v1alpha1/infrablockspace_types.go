@@ -78,14 +78,16 @@ type InfraBlockSpaceSpec struct {
 type InfraBlockSpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	ChainSpec string `json:"chainSpec,omitempty"`
+	Replicas int32  `json:"replicas,omitempty"`
+	Region   string `json:"region,omitempty"`
+	Rack     string `json:"rack,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Size",type=integer,JSONPath=`.spec.Replicas`
-// +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.spec.Region`
-// +kubebuilder:printcolumn:name="Rack",type=string,JSONPath=`.spec.Rack`
+// +kubebuilder:printcolumn:name="Size",type=integer,JSONPath=`.status.replicas`
+// +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.status.region`
+// +kubebuilder:printcolumn:name="Rack",type=string,JSONPath=`.status.rack`
 // InfraBlockSpace is the Schema for the infrablockspaces API
 type InfraBlockSpace struct {
 	metav1.TypeMeta   `json:",inline"`
