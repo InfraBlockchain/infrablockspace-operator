@@ -609,6 +609,9 @@ func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name str
 	}
 	foundStatefulset := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundStatefulset); err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil
+		}
 		logger.Error(err)
 		return err
 	}
