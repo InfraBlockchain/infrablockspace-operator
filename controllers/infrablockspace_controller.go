@@ -616,9 +616,10 @@ func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name str
 		return err
 	}
 	if reqInfraBlockSpace.Status.Replicas > reqInfraBlockSpace.Spec.Replicas {
-		for i := *foundStatefulSet.Spec.Replicas; i > reqInfraBlockSpace.Spec.Replicas; i-- {
+		for i := reqInfraBlockSpace.Status.Replicas; i > reqInfraBlockSpace.Spec.Replicas; i-- {
 			name := fmt.Sprintf("%s-%d-peer-service", name, i-1)
 			if err := r.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: reqInfraBlockSpace.Namespace}}); err != nil {
+				logger.Error(err)
 				return err
 			}
 		}
