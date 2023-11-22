@@ -82,9 +82,10 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		log.Error(err, "Failed to get InfraBlockSpace")
 		return ctrl.Result{}, err
 	}
-	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" {
+	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" || reqInfraBlockSpace.Status.Replicas == 0 {
 		reqInfraBlockSpace.Status.Region = reqInfraBlockSpace.Spec.Region
 		reqInfraBlockSpace.Status.Rack = reqInfraBlockSpace.Spec.Rack
+		reqInfraBlockSpace.Status.Replicas = reqInfraBlockSpace.Spec.Replicas
 		if reqInfraBlockSpace.Spec.BootNodes == nil || len(reqInfraBlockSpace.Spec.BootNodes) == 0 {
 			reqInfraBlockSpace.Status.Mode = "BOOT"
 		} else {
@@ -120,6 +121,8 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil || result.Requeue {
 		return result, err
 	}
+
+	result, err = r.ensurePeer(ctx, reqInfraBlockSpace)
 
 	return ctrl.Result{}, nil
 }
@@ -388,8 +391,9 @@ func (r *InfraBlockSpaceReconciler) updateStatefulSet(ctx context.Context, name 
 		return ctrl.Result{}, err
 	}
 
-	if foundStatefulSet.Spec.Replicas != pointer.Int32(reqInfraBlockSpace.Spec.Replicas) {
+	if foundStatefulSet.Status.Replicas != reqInfraBlockSpace.Spec.Replicas {
 		foundStatefulSet.Spec.Replicas = pointer.Int32(reqInfraBlockSpace.Spec.Replicas)
+
 		if err := r.Update(ctx, foundStatefulSet); err != nil {
 			logger.Error(err)
 			return ctrl.Result{}, err
@@ -448,10 +452,6 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
-	if err = r.DeleteServices(ctx, name, reqInfraBlockSpace); err != nil {
-		logger.Error(err)
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -462,11 +462,6 @@ func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name str
 	}
 	if err := r.createClusterIPService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
-	}
-	if reqInfraBlockSpace.Status.Mode == "BOOT" {
-		if err := r.createPeerServices(ctx, name, reqInfraBlockSpace); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -636,4 +631,27 @@ func (r *InfraBlockSpaceReconciler) createPeerServices(ctx context.Context, name
 		idx++
 	}
 	return nil
+}
+
+func (r *InfraBlockSpaceReconciler) ensurePeer(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) (ctrl.Result, error) {
+	if reqInfraBlockSpace.Status.Mode != "BOOT" {
+		return ctrl.Result{}, nil
+	}
+	name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack)
+	isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, &appsv1.StatefulSet{})
+	if err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
+	}
+	if !(isExists) {
+		if err := r.createPeerServices(ctx, name, reqInfraBlockSpace); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if err = r.DeleteServices(ctx, name, reqInfraBlockSpace); err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
 }
