@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	infrablockspacenetv1alpha1 "github.com/InfraBlockchain/infrablockspace-operator/api/v1alpha1"
 	"github.com/InfraBlockchain/infrablockspace-operator/pkg/chain"
 	"github.com/InfraBlockchain/infrablockspace-operator/pkg/util"
@@ -81,10 +82,14 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		log.Error(err, "Failed to get InfraBlockSpace")
 		return ctrl.Result{}, err
 	}
-	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" || reqInfraBlockSpace.Status.Replicas == 0 {
+	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" {
 		reqInfraBlockSpace.Status.Region = reqInfraBlockSpace.Spec.Region
 		reqInfraBlockSpace.Status.Rack = reqInfraBlockSpace.Spec.Rack
-		reqInfraBlockSpace.Status.Replicas = reqInfraBlockSpace.Spec.Replicas
+		if reqInfraBlockSpace.Spec.BootNodes == nil || len(reqInfraBlockSpace.Spec.BootNodes) == 0 {
+			reqInfraBlockSpace.Status.Mode = "BOOT"
+		} else {
+			reqInfraBlockSpace.Status.Mode = "PEER"
+		}
 		if err = r.Status().Update(ctx, reqInfraBlockSpace); err != nil {
 			log.Error(err, "Failed to update Memcached status")
 			return ctrl.Result{}, err
@@ -101,12 +106,12 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
-	if err != nil || result.Requeue {
-		return result, err
-	}
+	//result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
+	//if err != nil || result.Requeue {
+	//	return result, err
+	//}
 
-	result, err = r.ensureService(ctx, reqInfraBlockSpace)
+	result, err := r.ensureService(ctx, reqInfraBlockSpace)
 	if err != nil {
 		return result, err
 	}
@@ -321,7 +326,7 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 	if reqInfraBlockSpace.Spec.Size == "" {
 		reqInfraBlockSpace.Spec.Size = chain.VolumeSize100Gi
 	}
-	
+
 	pvc := chain.CreateChainPVC("relay-pvc", reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
 
 	statefulSet := &appsv1.StatefulSet{
@@ -443,6 +448,10 @@ func (r *InfraBlockSpaceReconciler) ensureService(ctx context.Context, reqInfraB
 		logger.Error(err)
 		return ctrl.Result{}, err
 	}
+	if err = r.DeleteServices(ctx, name, reqInfraBlockSpace); err != nil {
+		logger.Error(err)
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -454,13 +463,20 @@ func (r *InfraBlockSpaceReconciler) createServices(ctx context.Context, name str
 	if err := r.createClusterIPService(ctx, name, reqInfraBlockSpace); err != nil {
 		return err
 	}
+	if reqInfraBlockSpace.Status.Mode == "BOOT" {
+		if err := r.createPeerServices(ctx, name, reqInfraBlockSpace); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
 	servicePorts := chain.GenerateServicePorts(ports...)
-	service := chain.GenerateHeadlessServiceObject(name+"-"+chain.SuffixHeadlessService, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	selector := make(map[string]string)
+	selector["app"] = name
+	service := chain.GenerateHeadlessServiceObject(name+"-"+chain.SuffixHeadlessService, reqInfraBlockSpace.Namespace, servicePorts, selector)
 	err := r.createService(ctx, service, reqInfraBlockSpace)
 	return err
 }
@@ -468,7 +484,19 @@ func (r *InfraBlockSpaceReconciler) createHeadlessService(ctx context.Context, n
 func (r *InfraBlockSpaceReconciler) createClusterIPService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
 	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
 	servicePorts := chain.GenerateServicePorts(ports...)
-	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, nil)
+	selector := make(map[string]string)
+	selector["app"] = name
+	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, selector)
+	err := r.createService(ctx, service, reqInfraBlockSpace)
+	return err
+}
+
+func (r *InfraBlockSpaceReconciler) createPeerService(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	ports := chain.GetServicePorts(reqInfraBlockSpace.Spec.Port)
+	servicePorts := chain.GenerateServicePorts(ports...)
+	selector := make(map[string]string)
+	selector["statefulset.kubernetes.io/pod-name"] = name
+	service := chain.GenerateClusterIpServiceObject(name+"-"+chain.SuffixService, reqInfraBlockSpace.Namespace, servicePorts, selector)
 	err := r.createService(ctx, service, reqInfraBlockSpace)
 	return err
 }
@@ -573,4 +601,36 @@ func (r *InfraBlockSpaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Complete(r)
+}
+
+func (r *InfraBlockSpaceReconciler) DeleteServices(ctx context.Context, name string, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	if reqInfraBlockSpace.Status.Mode == "PEER" {
+		return nil
+	}
+	foundStatefulset := &appsv1.StatefulSet{}
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: reqInfraBlockSpace.Namespace}, foundStatefulset); err != nil {
+		logger.Error(err)
+		return err
+	}
+	if *foundStatefulset.Spec.Replicas > reqInfraBlockSpace.Spec.Replicas {
+		for i := *foundStatefulset.Spec.Replicas; i > reqInfraBlockSpace.Spec.Replicas; i-- {
+			name := fmt.Sprintf("%s-%d-peer-service", name, i-1)
+			if err := r.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *InfraBlockSpaceReconciler) createPeerServices(ctx context.Context, name string, space *infrablockspacenetv1alpha1.InfraBlockSpace) error {
+	var idx int32 = 0
+	for idx < space.Spec.Replicas {
+		name := fmt.Sprintf("%s-%d-peer-service", name, idx)
+		if err := r.createPeerService(ctx, name, space); err != nil {
+			return err
+		}
+		idx++
+	}
+	return nil
 }
