@@ -74,12 +74,12 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Info("InfraBlockSpaceReconciler resource not found. Ignoring since object must be deleted")
+			logger.Info("InfraBlockSpaceReconciler resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get InfraBlockSpace")
+		logger.Error(err)
 		return ctrl.Result{}, err
 	}
 	if reqInfraBlockSpace.Status.Region == "" || reqInfraBlockSpace.Status.Rack == "" || reqInfraBlockSpace.Status.Replicas == 0 {
@@ -97,7 +97,7 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		if err := r.Get(ctx, req.NamespacedName, reqInfraBlockSpace); err != nil {
-			log.Error(err, "Failed to re-fetch memcached")
+			logger.Error(err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -141,6 +141,7 @@ func (r *InfraBlockSpaceReconciler) ensureChainSecrets(ctx context.Context, reqI
 		name := util.GenerateResourceName(reqInfraBlockSpace.Name, reqInfraBlockSpace.Spec.Region, reqInfraBlockSpace.Spec.Rack, key.KeyType)
 		isExists, err := r.checkResourceExists(ctx, reqInfraBlockSpace.Namespace, name, secret)
 		if err != nil {
+			logger.Error(err)
 			return err
 		}
 		if !(isExists) {
@@ -174,7 +175,6 @@ func (r *InfraBlockSpaceReconciler) ensureChainPVC(ctx context.Context, reqInfra
 }
 func (r *InfraBlockSpaceReconciler) checkResourceExists(ctx context.Context, namespace string, name string, obj client.Object) (bool, error) {
 	if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
-		logger.Error(err)
 		if kerrors.IsNotFound(err) { // create
 			return false, nil
 		} else { // error
@@ -217,7 +217,6 @@ func (r *InfraBlockSpaceReconciler) createSecret(ctx context.Context, reqInfraBl
 
 func (r *InfraBlockSpaceReconciler) updateSecret(ctx context.Context, reqInfraBlockSpace *infrablockspacenetv1alpha1.InfraBlockSpace, name string, key chain.Key) error {
 	if err := r.validateKey(key); err != nil {
-		logger.Error(err)
 		return err
 	}
 
