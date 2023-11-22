@@ -636,7 +636,9 @@ func (r *InfraBlockSpaceReconciler) createPeerServices(ctx context.Context, name
 	for idx < space.Spec.Replicas {
 		name := fmt.Sprintf("%s-%d-peer-service", name, idx)
 		if err := r.createPeerService(ctx, name, space); err != nil {
-			return err
+			if !kerrors.IsAlreadyExists(err) {
+				return err
+			}
 		}
 		idx++
 	}
