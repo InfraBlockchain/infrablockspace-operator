@@ -101,12 +101,12 @@ func (r *InfraBlockSpaceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
-	if err != nil || result.Requeue {
-		return result, err
-	}
+	//result, err := r.ensureChainPVC(ctx, reqInfraBlockSpace)
+	//if err != nil || result.Requeue {
+	//	return result, err
+	//}
 
-	_, err = r.ensureService(ctx, reqInfraBlockSpace)
+	result, err := r.ensureService(ctx, reqInfraBlockSpace)
 	if err != nil {
 		return result, err
 	}
@@ -318,12 +318,20 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 	if reqInfraBlockSpace.Spec.Region != "" {
 		labels["region"] = reqInfraBlockSpace.Spec.Region
 	}
+	if reqInfraBlockSpace.Spec.Size == "" {
+		reqInfraBlockSpace.Spec.Size = chain.VolumeSize100Gi
+	}
+	pvcName := util.GenerateResourceName(name, string(chain.RelayChain))
+	pvc := chain.CreateChainPVC(pvcName, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: reqInfraBlockSpace.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				*pvc,
+			},
 			ServiceName: name + "-" + chain.SuffixHeadlessService,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
