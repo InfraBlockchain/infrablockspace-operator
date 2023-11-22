@@ -71,23 +71,23 @@ type InfraBlockSpaceSpec struct {
 	Size string `json:"size,omitempty"`
 
 	// BootNodes is the dns list of boot nodes of the InfraBlockSpace
-	BootNodes *[]string `json:"bootNodes,omitempty"`
+	BootNodes []string `json:"bootNodes,omitempty"`
 }
 
 // InfraBlockSpaceStatus defines the observed state of InfraBlockSpace
 type InfraBlockSpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Replicas int32  `json:"replicas,omitempty"`
-	Region   string `json:"region,omitempty"`
-	Rack     string `json:"rack,omitempty"`
+	Region string `json:"region,omitempty"`
+	Rack   string `json:"rack,omitempty"`
+	Mode   string `json:"mode,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Size",type=integer,JSONPath=`.status.replicas`
 // +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.status.region`
 // +kubebuilder:printcolumn:name="Rack",type=string,JSONPath=`.status.rack`
+// +kubebuilder:printcolumn:name="Mode",type=string,JSONPath=`.status.mode`
 // InfraBlockSpace is the Schema for the infrablockspaces API
 type InfraBlockSpace struct {
 	metav1.TypeMeta   `json:",inline"`
