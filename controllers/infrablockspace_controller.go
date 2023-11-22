@@ -321,8 +321,8 @@ func (r *InfraBlockSpaceReconciler) createStatefulSet(ctx context.Context, name 
 	if reqInfraBlockSpace.Spec.Size == "" {
 		reqInfraBlockSpace.Spec.Size = chain.VolumeSize100Gi
 	}
-	pvcName := util.GenerateResourceName(name, string(chain.RelayChain))
-	pvc := chain.CreateChainPVC(pvcName, reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
+	
+	pvc := chain.CreateChainPVC("relay-pvc", reqInfraBlockSpace.Namespace, reqInfraBlockSpace.Spec.Size, reqInfraBlockSpace.Spec.StorageClassName)
 
 	statefulSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
