@@ -49,8 +49,7 @@ func GetInjectKeyCommandAndArgs(keys []Key) ([]string, []string) {
 func GetRelayChainArgs(port Port, isBoot bool, bootNodesUrl []string) []string {
 	validatorArgs := getChainArgs(RelayChain)
 	rpc := fmt.Sprintf("--rpc-port=%d", port.RPCPort)
-	ws := fmt.Sprintf("--ws-port=%d", port.WSPort)
-	validatorArgs = appendRelayChainArgs(validatorArgs, rpc, ws)
+	validatorArgs = appendRelayChainArgs(validatorArgs, rpc)
 	if !(isBoot) {
 		validatorArgs = appendBootNods(validatorArgs, bootNodesUrl...)
 	}
@@ -67,10 +66,10 @@ func appendRelayChainArgs(args []string, ports ...string) []string {
 		"--prometheus-external",
 		"--prometheus-port=9615",
 		"--unsafe-rpc-external",
-		"--unsafe-ws-external",
 		"--rpc-cors",
 		"all",
 		"--keystore-path=/keystore",
+		"--rpc-max-connections=16000",
 	}
 	args = append(args, relayArgs...)
 	args = append(args, ports...)
