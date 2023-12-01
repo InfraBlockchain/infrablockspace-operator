@@ -8,7 +8,7 @@ import (
 
 func GetServicePorts(chainPort Port) []int32 {
 	var ports []int32
-	if chainPort.WSPort == 0 {
+	if chainPort.RPCPort == 0 {
 		ports = getDefaultRelayPorts()
 	} else {
 		ports = getCustomRelayPorts(chainPort)
@@ -17,11 +17,11 @@ func GetServicePorts(chainPort Port) []int32 {
 }
 
 func getDefaultRelayPorts() []int32 {
-	return []int32{DefaultChainWSPort, DefaultChainRPCPort, DefaultChainP2PPort}
+	return []int32{DefaultChainRPCPort, DefaultChainP2PPort}
 }
 
 func getCustomRelayPorts(port Port) []int32 {
-	return []int32{port.WSPort, port.RPCPort, port.P2PPort}
+	return []int32{port.RPCPort, port.P2PPort}
 }
 
 func GenerateClusterIpServiceObject(name, namespace string, ports []corev1.ServicePort, selector map[string]string) *corev1.Service {
@@ -36,7 +36,7 @@ func GenerateHeadlessServiceObject(name, namespace string, ports []corev1.Servic
 }
 
 func GenerateServicePorts(ports ...int32) []corev1.ServicePort {
-	portsNames := []string{"ws", "rpc", "p2p"}
+	portsNames := []string{"rpc", "p2p"}
 	servicePorts := make([]corev1.ServicePort, len(ports))
 	for idx, port := range ports {
 		servicePorts[idx] = corev1.ServicePort{

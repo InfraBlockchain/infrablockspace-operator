@@ -4,7 +4,6 @@ package chain
 // Port is a struct for chain port information
 type Port struct {
 	RPCPort int32 `json:"rpcPort,omitempty"`
-	WSPort  int32 `json:"wsPort,omitempty"`
 	P2PPort int32 `json:"p2pPort,omitempty"`
 }
 
@@ -58,12 +57,11 @@ const InjectKeyScript string = `
 		{{end}}
 `
 
-const DefaultChainWSPort int32 = 9933
 const DefaultChainRPCPort int32 = 9944
 const DefaultChainP2PPort int32 = 30333
 
 const VolumeSize100Gi = "100Gi"
-const DefaultSecondaryChainWSPort int32 = 9934
+
 const DefaultSecondaryChainRPCPort int32 = 9945
 const DefaultSecondaryChainP2PPort int32 = 30334
 
