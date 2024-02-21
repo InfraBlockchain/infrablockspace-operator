@@ -96,6 +96,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "InfraBlockSpace")
 		os.Exit(1)
 	}
+	if err = (&controllers.ExplorerReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Explorer")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
